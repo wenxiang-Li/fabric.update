@@ -38,9 +38,7 @@ const (
 	dataformatVersionDocID = "dataformatVersion"
 )
 
-var (
-	maxDataImportBatchMemorySize = 2 * 1024 * 1024
-)
+var maxDataImportBatchMemorySize = 2 * 1024 * 1024
 
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
@@ -203,7 +201,7 @@ func (provider *VersionedDBProvider) Close() {
 // It is not an error if a database does not exist.
 func (provider *VersionedDBProvider) Drop(dbName string) error {
 	metadataDBName := constructMetadataDBName(dbName)
-	couchDBDatabase := couchDatabase{couchInstance: provider.couchInstance, dbName: metadataDBName, indexWarmCounter: 1}
+	couchDBDatabase := couchDatabase{couchInstance: provider.couchInstance, dbName: metadataDBName}
 	_, couchDBReturn, err := couchDBDatabase.getDatabaseInfo()
 	if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
 		// db does not exist
@@ -767,22 +765,7 @@ func (vdb *VersionedDB) postCommitProcessing(committers []*committer, namespaces
 			vdb.cache.Reset()
 			errChan <- err
 		}
-
 	}()
-
-	for _, ns := range namespaces {
-		db, err := vdb.getNamespaceDBHandle(ns)
-		if err != nil {
-			return err
-		}
-		if db.couchInstance.conf.WarmIndexesAfterNBlocks > 0 {
-			if db.indexWarmCounter >= db.couchInstance.conf.WarmIndexesAfterNBlocks {
-				go db.runWarmIndexAllIndexes()
-				db.indexWarmCounter = 0
-			}
-			db.indexWarmCounter++
-		}
-	}
 
 	// Record a savepoint at a given height
 	if err := vdb.recordSavepoint(height); err != nil {
@@ -974,9 +957,9 @@ func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBook
 	const jsonQueryFields = "fields"
 	const jsonQueryLimit = "limit"
 	const jsonQueryBookmark = "bookmark"
-	//create a generic map for the query json
+	// create a generic map for the query json
 	jsonQueryMap := make(map[string]interface{})
-	//unmarshal the selector json into the generic map
+	// unmarshal the selector json into the generic map
 	decoder := json.NewDecoder(bytes.NewBuffer([]byte(queryString)))
 	decoder.UseNumber()
 	err := decoder.Decode(&jsonQueryMap)
@@ -986,7 +969,7 @@ func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBook
 	if fieldsJSONArray, ok := jsonQueryMap[jsonQueryFields]; ok {
 		switch fieldsJSONArray := fieldsJSONArray.(type) {
 		case []interface{}:
-			//Add the "_id", and "version" fields,  these are needed by default
+			// Add the "_id", and "version" fields,  these are needed by default
 			jsonQueryMap[jsonQueryFields] = append(fieldsJSONArray, idField, versionField)
 		default:
 			return "", errors.New("fields definition must be an array")
@@ -1000,7 +983,7 @@ func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBook
 	if queryBookmark != "" {
 		jsonQueryMap[jsonQueryBookmark] = queryBookmark
 	}
-	//Marshal the updated json query
+	// Marshal the updated json query
 	editedQuery, err := json.Marshal(jsonQueryMap)
 	if err != nil {
 		return "", err

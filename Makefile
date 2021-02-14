@@ -46,7 +46,7 @@
 #   - verify - runs unit tests for only the changed package tree
 
 ALPINE_VER ?= 3.12
-BASE_VERSION = 2.3.0
+BASE_VERSION = 2.4.0
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
@@ -174,7 +174,7 @@ profile: export JOB_TYPE=PROFILE
 profile: unit-test
 
 .PHONY: linter
-linter: check-deps gotool.goimports
+linter: check-deps gotool.goimports gotool.gofumpt gotool.staticcheck
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
 

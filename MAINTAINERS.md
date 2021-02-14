@@ -1,14 +1,15 @@
 Maintainers
 ===========
 
+See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html#maintainers) to learn about the role of the maintainers and the process to become one.
+
 **Active Maintainers**
 
 | Name | GitHub | Chat | email
 |------|--------|------|----------------------
 | Alessandro Sorniotti | [ale-linux][ale-linux] | aso | <ale.linux@sopit.net>
-| Brett Logan | [btl5037][btl5037] | btl5037 | <brett.t.logan@ibm.com>
+| Brett Logan | [lindluni][lindluni] | BrettLogan | <development.brett@gmail.com>
 | Artem Barger | [c0rwin][c0rwin] | c0rwin | <bartem@il.ibm.com>
-| Danny Cao | [caod123][caod123] | caod | <dcao@us.ibm.com>
 | Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Jay Guo | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
@@ -33,7 +34,7 @@ Maintainers
 
 | Name | GitHub | Chat | email
 |------|--------|------|----------------------
-| Brett Logan | [btl5037][btl5037] | btl5037 | <brett.t.logan@ibm.com>
+| Brett Logan | [lindluni][lindluni] | BrettLogan | <development.brett@gmail.com>
 | Chris Ferris | [christo4ferris][christo4ferris] | cbf | <chris.ferris@gmail.com>
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Gari Singh | [mastersingh24][mastersingh24] | mastersingh24 | <gari.r.singh@gmail.com>
@@ -44,6 +45,7 @@ Maintainers
 |------|--------|------|----------------------
 | Binh Nguyen | [binhn][binhn] | binhn | <binh1010010110@gmail.com>
 | Chris Ferris | [christo4ferris][christo4ferris] | cbf | <chris.ferris@gmail.com>
+| Danny Cao | [caod123][caod123] | caod | <caoxiaohua@gmail.com>
 | Gabor Hosszu | [gabre][gabre] | hgabor | <gabor@digitalasset.com>
 | Greg Haskins | [ghaskins][ghaskins] | ghaskins | <gregory.haskins@gmail.com>
 | Jonathan Levi | [hacera][hacera] |JonathanLevi | <jonathan@hacera.com>
@@ -57,7 +59,7 @@ Maintainers
 
 [ale-linux]: https://github.com/ale-linux
 [binhn]: https://github.com/binhn
-[btl5037]: https://github.com/btl5037
+[lindluni]: https://github.com/lindluni
 [c0rwin]: https://github.com/c0rwin
 [caod123]: https://github.com/caod123
 [cendhu]: https://github.com/cendhu
