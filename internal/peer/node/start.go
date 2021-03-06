@@ -92,7 +92,7 @@ import (
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
-	gatewayserver "github.com/hyperledger/fabric/internal/pkg/gateway/server"
+	"github.com/hyperledger/fabric/internal/pkg/gateway"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -323,15 +323,6 @@ func serve(args []string) error {
 
 	policyMgr := policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager)
 
-	deliverGRPCClient, err := comm.NewGRPCClient(comm.ClientConfig{
-		Timeout: deliverServiceConfig.ConnectionTimeout,
-		KaOpts:  deliverServiceConfig.KeepaliveOptions,
-		SecOpts: deliverServiceConfig.SecOpts,
-	})
-	if err != nil {
-		logger.Panicf("Could not create the deliver grpc client: [%+v]", err)
-	}
-
 	policyChecker := policy.NewPolicyChecker(
 		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
 		mgmt.GetLocalMSP(factory.GetDefault()),
@@ -459,7 +450,6 @@ func serve(args []string) error {
 		signingIdentity,
 		cs,
 		coreConfig.PeerAddress,
-		deliverGRPCClient,
 		deliverServiceConfig,
 		privdataConfig,
 	)
@@ -802,8 +792,9 @@ func serve(args []string) error {
 		coreConfig.ValidatorPoolSize,
 	)
 
+	var discoveryService *discovery.Service
 	if coreConfig.DiscoveryEnabled {
-		ds := createDiscoveryService(
+		discoveryService = createDiscoveryService(
 			coreConfig,
 			peerInstance,
 			peerServer,
@@ -816,17 +807,24 @@ func serve(args []string) error {
 			gossipService,
 		)
 		logger.Info("Discovery service activated")
-		discprotos.RegisterDiscoveryServer(peerServer.Server(), ds)
+		discprotos.RegisterDiscoveryServer(peerServer.Server(), discoveryService)
 	}
 
 	if coreConfig.GatewayOptions.Enabled {
-		logger.Info("Starting peer with Gateway enabled")
-		gs, err := gatewayserver.CreateGatewayServer(serverEndorser)
-		if err != nil {
-			logger.Panicf("Failed to create Gateway server: %s", err)
+		if coreConfig.DiscoveryEnabled {
+			logger.Info("Starting peer with Gateway enabled")
+			gatewayprotos.RegisterGatewayServer(
+				peerServer.Server(),
+				gateway.CreateServer(
+					&gateway.EndorserServerAdapter{Server: serverEndorser},
+					discoveryService,
+					peerInstance.GossipService.SelfMembershipInfo().Endpoint,
+					coreConfig.GatewayOptions,
+				),
+			)
+		} else {
+			logger.Warning("Discovery service must be enabled for embedded gateway")
 		}
-		gatewayprotos.RegisterGatewayServer(peerServer.Server(), gs)
-		logger.Info("Gateway server activated")
 	}
 
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
@@ -1145,7 +1143,7 @@ func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOptio
 		// set max send/recv msg sizes
 		dialOpts = append(
 			dialOpts,
-			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)),
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.DefaultMaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.DefaultMaxSendMsgSize)),
 		)
 		// set the keepalive options
 		kaOpts := comm.DefaultKeepaliveOptions
@@ -1155,7 +1153,7 @@ func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOptio
 		if viper.IsSet("peer.keepalive.client.timeout") {
 			kaOpts.ClientTimeout = viper.GetDuration("peer.keepalive.client.timeout")
 		}
-		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
+		dialOpts = append(dialOpts, kaOpts.ClientKeepaliveOptions()...)
 
 		if viper.GetBool("peer.tls.enabled") {
 			dialOpts = append(dialOpts, grpc.WithTransportCredentials(credSupport.GetPeerCredentials()))
@@ -1178,7 +1176,6 @@ func initGossipService(
 	signer msp.SigningIdentity,
 	credSupport *comm.CredentialSupport,
 	peerAddress string,
-	deliverGRPCClient *comm.GRPCClient,
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 	privdataConfig *gossipprivdata.PrivdataConfig,
 ) (*gossipservice.GossipService, error) {
@@ -1221,7 +1218,6 @@ func initGossipService(
 		secAdv,
 		secureDialOpts(credSupport),
 		credSupport,
-		deliverGRPCClient,
 		gossipConfig,
 		serviceConfig,
 		privdataConfig,

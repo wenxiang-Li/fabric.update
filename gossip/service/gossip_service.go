@@ -130,7 +130,6 @@ type DeliveryServiceFactory interface {
 type deliveryFactoryImpl struct {
 	signer               identity.SignerSerializer
 	credentialSupport    *corecomm.CredentialSupport
-	deliverGRPCClient    *corecomm.GRPCClient
 	deliverServiceConfig *deliverservice.DeliverServiceConfig
 }
 
@@ -141,7 +140,6 @@ func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, ordererSource *or
 		CryptoSvc:            mcs,
 		Gossip:               g,
 		Signer:               df.signer,
-		DeliverGRPCClient:    df.deliverGRPCClient,
 		DeliverServiceConfig: df.deliverServiceConfig,
 		OrdererSource:        ordererSource,
 	})
@@ -240,7 +238,6 @@ func New(
 	secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts,
 	credSupport *corecomm.CredentialSupport,
-	deliverGRPCClient *corecomm.GRPCClient,
 	gossipConfig *gossip.Config,
 	serviceConfig *ServiceConfig,
 	privdataConfig *gossipprivdata.PrivdataConfig,
@@ -275,7 +272,6 @@ func New(
 		deliveryFactory: &deliveryFactoryImpl{
 			signer:               peerIdentity,
 			credentialSupport:    credSupport,
-			deliverGRPCClient:    deliverGRPCClient,
 			deliverServiceConfig: deliverServiceConfig,
 		},
 		peerIdentity:      serializedIdentity,
@@ -433,16 +429,16 @@ func (g *GossipService) createSelfSignedData() protoutil.SignedData {
 }
 
 // updateAnchors constructs a joinChannelMessage and sends it to the gossipSvc
-func (g *GossipService) updateAnchors(config Config) {
+func (g *GossipService) updateAnchors(configUpdate ConfigUpdate) {
 	myOrg := string(g.secAdv.OrgByPeerIdentity(api.PeerIdentityType(g.peerIdentity)))
-	if !g.amIinChannel(myOrg, config) {
-		logger.Error("Tried joining channel", config.ChannelID(), "but our org(", myOrg, "), isn't "+
-			"among the orgs of the channel:", orgListFromConfig(config), ", aborting.")
+	if !g.amIinChannel(myOrg, configUpdate) {
+		logger.Error("Tried joining channel", configUpdate.ChannelID, "but our org(", myOrg, "), isn't "+
+			"among the orgs of the channel:", orgListFromConfigUpdate(configUpdate), ", aborting.")
 		return
 	}
-	jcm := &joinChannelMessage{seqNum: config.Sequence(), members2AnchorPeers: map[string][]api.AnchorPeer{}}
+	jcm := &joinChannelMessage{seqNum: configUpdate.Sequence, members2AnchorPeers: map[string][]api.AnchorPeer{}}
 	anchorPeerEndpoints := map[string]struct{}{}
-	for _, appOrg := range config.Organizations() {
+	for _, appOrg := range configUpdate.Organizations {
 		logger.Debug(appOrg.MSPID(), "anchor peers:", appOrg.AnchorPeers())
 		jcm.members2AnchorPeers[appOrg.MSPID()] = []api.AnchorPeer{}
 		for _, ap := range appOrg.AnchorPeers() {
@@ -454,11 +450,11 @@ func (g *GossipService) updateAnchors(config Config) {
 			anchorPeerEndpoints[fmt.Sprintf("%s:%d", ap.Host, ap.Port)] = struct{}{}
 		}
 	}
-	g.anchorPeerTracker.update(config.ChannelID(), anchorPeerEndpoints)
+	g.anchorPeerTracker.update(configUpdate.ChannelID, anchorPeerEndpoints)
 
 	// Initialize new state provider for given committer
-	logger.Debug("Creating state provider for channelID", config.ChannelID())
-	g.JoinChan(jcm, common.ChannelID(config.ChannelID()))
+	logger.Debug("Creating state provider for channelID", configUpdate.ChannelID)
+	g.JoinChan(jcm, common.ChannelID(configUpdate.ChannelID))
 }
 
 // AddPayload appends message payload to for given chain
@@ -502,8 +498,8 @@ func (g *GossipService) newLeaderElectionComponent(channelID string, callback fu
 	return election.NewLeaderElectionService(adapter, string(PKIid), callback, config)
 }
 
-func (g *GossipService) amIinChannel(myOrg string, config Config) bool {
-	for _, orgName := range orgListFromConfig(config) {
+func (g *GossipService) amIinChannel(myOrg string, configUpdate ConfigUpdate) bool {
+	for _, orgName := range orgListFromConfigUpdate(configUpdate) {
 		if orgName == myOrg {
 			return true
 		}
@@ -533,9 +529,9 @@ func (g *GossipService) onStatusChangeFactory(channelID string, committer blocks
 	}
 }
 
-func orgListFromConfig(config Config) []string {
+func orgListFromConfigUpdate(config ConfigUpdate) []string {
 	var orgList []string
-	for _, appOrg := range config.Organizations() {
+	for _, appOrg := range config.Organizations {
 		orgList = append(orgList, appOrg.MSPID())
 	}
 	return orgList

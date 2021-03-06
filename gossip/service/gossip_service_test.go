@@ -119,9 +119,6 @@ func TestInitGossipService(t *testing.T) {
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
 
-	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
-	require.NoError(t, err)
-
 	gossipService, err := New(
 		signer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
@@ -131,7 +128,6 @@ func TestInitGossipService(t *testing.T) {
 		secAdv,
 		nil,
 		comm.NewCredentialSupport(),
-		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
 		&privdata.PrivdataConfig{},
@@ -873,9 +869,6 @@ func TestInvalidInitialization(t *testing.T) {
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
 
-	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
-	require.NoError(t, err)
-
 	gossipService, err := New(
 		mockSignerSerializer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
@@ -885,7 +878,6 @@ func TestInvalidInitialization(t *testing.T) {
 		secAdv,
 		nil,
 		comm.NewCredentialSupport(),
-		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
 		&privdata.PrivdataConfig{},
@@ -920,9 +912,6 @@ func TestChannelConfig(t *testing.T) {
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
 
-	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
-	require.NoError(t, err)
-
 	gossipService, err := New(
 		mockSignerSerializer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
@@ -932,7 +921,6 @@ func TestChannelConfig(t *testing.T) {
 		secAdv,
 		nil,
 		nil,
-		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
 		&privdata.PrivdataConfig{},
@@ -954,9 +942,11 @@ func TestChannelConfig(t *testing.T) {
 
 	require.Equal(t, uint64(1), jcm.SequenceNumber())
 
-	mc := &mockConfig{
-		sequence: 1,
-		orgs: map[string]channelconfig.ApplicationOrg{
+	cu := ConfigUpdate{
+		Sequence:         1,
+		ChannelID:        "channel-id",
+		OrdererAddresses: []string{"localhost:7050"},
+		Organizations: map[string]channelconfig.ApplicationOrg{
 			string(orgInChannelA): &appGrp{
 				mspID:       string(orgInChannelA),
 				anchorPeers: []*peer.AnchorPeer{{Host: "localhost", Port: 2001}},
@@ -966,8 +956,8 @@ func TestChannelConfig(t *testing.T) {
 	gService.JoinChan(jcm, gossipcommon.ChannelID("A"))
 	// use mock secAdv so that gService.secAdv.OrgByPeerIdentity can return the matched identity
 	gService.secAdv = &secAdvMock{}
-	gService.updateAnchors(mc)
-	require.True(t, gService.amIinChannel(string(orgInChannelA), mc))
+	gService.updateAnchors(cu)
+	require.True(t, gService.amIinChannel(string(orgInChannelA), cu))
 	require.True(t, gService.anchorPeerTracker.IsAnchorPeer("localhost:2001"))
 	require.False(t, gService.anchorPeerTracker.IsAnchorPeer("localhost:5000"))
 }

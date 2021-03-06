@@ -273,8 +273,7 @@ func (c *Config) load() error {
 		c.DeliverClientKeepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
 	}
 
-	c.GatewayOptions = gateway.DefaultOptions()
-	c.GatewayOptions.Enabled = viper.GetBool("peer.gateway.enabled")
+	c.GatewayOptions = gateway.GetOptions(viper.GetViper())
 
 	c.VMEndpoint = viper.GetString("vm.endpoint")
 	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")
@@ -338,7 +337,7 @@ func getLocalAddress() (string, error) {
 		return "", errors.Errorf("peer.address isn't in host:port format: %s", peerAddress)
 	}
 
-	localIP, err := comm.GetLocalIP()
+	localIP, err := getLocalIP()
 	if err != nil {
 		peerLogger.Errorf("local IP address not auto-detectable: %s", err)
 		return "", err
@@ -358,6 +357,23 @@ func getLocalAddress() (string, error) {
 	}
 	peerLogger.Info("Returning", peerAddress)
 	return peerAddress, nil
+}
+
+// getLocalIP returns the a loopback local IP of the host.
+func getLocalIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback then display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+	return "", errors.Errorf("no non-loopback, IPv4 interface detected")
 }
 
 // GetServerConfig returns the gRPC server configuration for the peer

@@ -365,7 +365,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 	}
 
 	clientConf := comm.ClientConfig{
-		Timeout: conf.Timeout,
+		DialTimeout: conf.Timeout,
 		SecOpts: comm.SecureOptions{
 			Certificate:       conf.TLSCert,
 			Key:               conf.TLSKey,
@@ -375,7 +375,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 	}
 
 	dialer := &StandardDialer{
-		Config: clientConf.Clone(),
+		Config: clientConf,
 	}
 
 	tlsCertAsDER, _ := pem.Decode(conf.TLSCert)
