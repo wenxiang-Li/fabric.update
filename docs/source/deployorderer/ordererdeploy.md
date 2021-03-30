@@ -2,7 +2,7 @@
 
 Before deploying an ordering service, review the material in [Planning for an ordering service](./ordererplan.html) and [Checklist for a production ordering service](./ordererchecklist.html), which discusses all of the relevant decisions you need to make and parameters you need to configure before deploying an ordering service.
 
-This tutorial is based on the Raft consensus protocol and can be used to build an ordering service, which is comprised of ordering nodes, or "orderers". It describes the process to create a three-node Raft ordering service where all of the ordering nodes belong to the same organization. This tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer. Instead, these nodes (or a subset of them), will be joined to a channel using the process to [Create a channel without a system channel](../create_channel/create-channel_participation.html).
+This tutorial is based on the Raft consensus protocol and can be used to build an ordering service, which is comprised of ordering nodes, or "orderers". It describes the process to create a three-node Raft ordering service where all of the ordering nodes belong to the same organization. This tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer. Instead, these nodes (or a subset of them), will be joined to a channel using the process to [Create a channel](../create_channel/create_channel_participation.html).
 
 For information on how to create an orderer that will be bootstrapped with a system channel genesis block, check out [Deploy the ordering service](https://hyperledger-fabric.readthedocs.io/en/release-2.2/deployorderer/ordererdeploy.html) from the Fabric v2.2 documentation.
 
@@ -111,6 +111,15 @@ At a minimum, you need to configure the following parameters:
 - `FileLedger.Location` - Location on the file system to the ledgers of the channels this orderer will be servicing.
 - `ChannelParticipation.Enabled` - Set to `true`. This allows the orderer to be joined to an application channel without joining a system channel first.
 
+Because this tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer, the following additional parameters are required if you want to create an application channel with the `osnadmin` command.
+
+- `Admin.ListenAddress` - The orderer admin server address (host and port) that can be used by the `osnadmin` command to configure channels on the ordering service. This value should be a unique `host:port` combination to avoid conflicts.
+- `Admin.TLS.Enabled:` - Technically this can be set to `false`, but this is not recommended. In general, you should always set this value to `true`.
+- `Admin.TLS.PrivateKey:` - The path to and file name of the orderer private key issued by the TLS CA.
+- `Admin.TLS.Certificate:` - The path to and file name of the orderer signed certificate issued by the TLS CA.
+- `Admin.TLS.ClientAuthRequired:` This value must be set to `true`. Note that while mutual TLS is required for all operations on the orderer Admin endpoint, the entire network is not required to use Mutual TLS.
+- `Admin.TLS.ClientRootCAs:` - The path to and file name of the admin client TLS CA Root certificate. In the folder structure above, this is `admin-client/client-tls-ca-cert.pem`.
+
 ## Start the orderer
 
 Make sure you have set the value of the `FABRIC_CFG_PATH` to be the location of the `orderer.yaml` file relative to where you are invoking the orderer binary. For example, if you run the orderer binary from the `fabric/bin` folder, it would point to the  `/config` folder:
@@ -138,7 +147,7 @@ You have successfully started one node, you now need to repeat these steps to co
 
 Your ordering service is started and ready to order transactions into blocks. Depending on your use case, you may need to add or remove orderers from the consenter set, or other organizations may want to contribute their own orderers to the cluster. See the topic on ordering service [reconfiguration](../raft_configuration.html#reconfiguration) for considerations and instructions.
 
-Once your nodes have been created, you are ready to join them to a channel. Check out [Create a channel without a system channel](../create_channel/create-channel_participation.html) for more information.
+Once your nodes have been created, you are ready to join them to a channel. Check out [Create a channel](../create_channel/create_channel_participation.html) for more information.
 
 ## Troubleshooting
 
